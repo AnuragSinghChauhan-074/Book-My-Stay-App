@@ -4,17 +4,17 @@ import java.util.Map;
 /**
  * Hotel Booking Management System
  *
- * Use Case 3 - Centralized Room Inventory Management
+ * Use Case 4 - Room Search & Availability Check
  *
  * Demonstrates:
- * - HashMap for centralized inventory
- * - O(1) availability lookup
- * - Encapsulation of inventory logic
- * - Separation of concerns
- * - Scalable room registration
+ * - Read-only search operations
+ * - Defensive programming
+ * - Filtering unavailable rooms
+ * - Clear separation of concerns
+ * - Inventory as centralized state holder
  *
  * @author Lakshmi M
- * @version 1.2
+ * @version 1.3
  */
 public class Main {
 
@@ -23,28 +23,26 @@ public class Main {
         System.out.println("=======================================");
         System.out.println("        BOOK MY STAY APPLICATION       ");
         System.out.println("     Hotel Booking Management System   ");
-        System.out.println("              Version 1.2              ");
+        System.out.println("              Version 1.3              ");
         System.out.println("=======================================\n");
 
-        // Create Room Objects (Domain Model)
+        // Domain Objects
         Room singleRoom = new SingleRoom();
         Room doubleRoom = new DoubleRoom();
         Room suiteRoom = new SuiteRoom();
 
-        // Initialize Centralized Inventory
+        // Centralized Inventory (State Holder)
         RoomInventory inventory = new RoomInventory();
         inventory.registerRoom(singleRoom.getRoomType(), 5);
-        inventory.registerRoom(doubleRoom.getRoomType(), 3);
+        inventory.registerRoom(doubleRoom.getRoomType(), 0); // Not available
         inventory.registerRoom(suiteRoom.getRoomType(), 2);
 
-        // Display Current Inventory
-        inventory.displayInventory();
+        // Search Service (Read-only operation)
+        RoomSearchService searchService = new RoomSearchService(inventory);
 
-        // Controlled Update Example
-        System.out.println("\nUpdating availability (Booking 1 Single Room)...");
-        inventory.updateAvailability("Single Room", -1);
-
-        inventory.displayInventory();
+        searchService.searchAvailableRooms(
+                new Room[]{singleRoom, doubleRoom, suiteRoom}
+        );
 
         System.out.println("\nApplication Terminated Successfully.");
     }
@@ -101,47 +99,53 @@ class SuiteRoom extends Room {
 }
 
 /* ================================
-   Centralized Inventory Management
+   Centralized Inventory
    ================================ */
 class RoomInventory {
 
-    // Single Source of Truth
     private Map<String, Integer> availabilityMap;
 
-    // Constructor initializes inventory
     public RoomInventory() {
         availabilityMap = new HashMap<>();
     }
 
-    // Register room type with availability
     public void registerRoom(String roomType, int count) {
         availabilityMap.put(roomType, count);
     }
 
-    // Retrieve availability
+    // Read-only access
     public int getAvailability(String roomType) {
         return availabilityMap.getOrDefault(roomType, 0);
     }
+}
 
-    // Controlled update (increase or decrease)
-    public void updateAvailability(String roomType, int change) {
-        int current = getAvailability(roomType);
-        int updated = current + change;
+/* ================================
+   Room Search Service (Read-Only)
+   ================================ */
+class RoomSearchService {
 
-        if (updated < 0) {
-            System.out.println("Error: Cannot reduce below zero.");
-            return;
-        }
+    private RoomInventory inventory;
 
-        availabilityMap.put(roomType, updated);
+    public RoomSearchService(RoomInventory inventory) {
+        this.inventory = inventory;
     }
 
-    // Display entire inventory
-    public void displayInventory() {
-        System.out.println("------ Current Room Inventory ------");
-        for (Map.Entry<String, Integer> entry : availabilityMap.entrySet()) {
-            System.out.println(entry.getKey() + " Available: " + entry.getValue());
+    public void searchAvailableRooms(Room[] rooms) {
+
+        System.out.println("------ Available Rooms ------");
+
+        for (Room room : rooms) {
+
+            int available = inventory.getAvailability(room.getRoomType());
+
+            // Defensive validation
+            if (available > 0) {
+                room.displayDetails();
+                System.out.println("Available: " + available);
+                System.out.println("--------------------------------");
+            }
         }
-        System.out.println("------------------------------------");
+
+        System.out.println("-------------------------------");
     }
 }
